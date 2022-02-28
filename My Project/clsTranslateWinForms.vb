@@ -1,4 +1,4 @@
-﻿' IDEMS International
+' IDEMS International
 ' Copyright (C) 2021
 '
 ' This program is free software: you can redistribute it and/or modify
@@ -16,7 +16,6 @@
 Imports System.ComponentModel
 Imports System.Data.SQLite
 Imports System.Reflection
-Imports System.Text.RegularExpressions
 Imports System.Windows.Forms
 
 '''------------------------------------------------------------------------------------------------
@@ -33,14 +32,14 @@ Imports System.Windows.Forms
 '''	"id_text"	TEXT NOT NULL,
 '''	PRIMARY KEY("form_name", "control_name")
 ''' )
-''' <para>
+''' </code><code>
 ''' CREATE TABLE "translations" (
 '''	"id_text"	TEXT,
 '''	"language_code"	TEXT,
 '''	"translation"	TEXT NOT NULL,
 '''	PRIMARY KEY("id_text", "language_code")
 ''' )
-''' </para></code>
+''' </code></para><para>
 ''' For example, if the 'form_controls' table contains a row with the values 
 ''' {'frmMain', 'mnuFile', 'File'}, 
 ''' then the 'translations' table should have a row for each supported language, e.g. 
@@ -52,7 +51,6 @@ Imports System.Windows.Forms
 ''' the class is declared as 'NotInheritable` and the constructor is declared as 'Private'.</para>
 ''' </summary>
 '''------------------------------------------------------------------------------------------------
-
 Public NotInheritable Class clsTranslateWinForms
 
     '''--------------------------------------------------------------------------------------------
@@ -67,7 +65,7 @@ Public NotInheritable Class clsTranslateWinForms
     '''--------------------------------------------------------------------------------------------
     ''' <summary>
     '''     Translates all the text in form <paramref name="clsForm"/> into language 
-    '''     <paramref name="strLanguage"/> using the translations in database 
+    '''     <paramref name="strLanguageCode"/> using the translations in database 
     '''     <paramref name="strDataSource"/>.
     '''     All the form's (sub)controls and (sub) menus are translated.     
     ''' </summary>
@@ -75,30 +73,30 @@ Public NotInheritable Class clsTranslateWinForms
     ''' <param name="clsForm">          The WinForm form to translate. </param>
     ''' <param name="strDataSource">    The path of the SQLite '.db' file that contains the
     '''                                 translation database. </param>
-    ''' <param name="strLanguage">      The language code to translate to (e.g. 'fr' for French). 
+    ''' <param name="strLanguageCode">      The language code to translate to (e.g. 'fr' for French). 
     '''                                 </param>
     '''
     ''' <returns>   If an exception is thrown, then returns the exception text; else returns 
     '''             'Nothing'. </returns>
     '''--------------------------------------------------------------------------------------------
     Public Shared Function TranslateForm(clsForm As Form, strDataSource As String,
-                                         strLanguage As String) As String
+                                         strLanguageCode As String) As String
         If IsNothing(clsForm) OrElse String.IsNullOrEmpty(strDataSource) OrElse
-                String.IsNullOrEmpty(strLanguage) Then
+                String.IsNullOrEmpty(strLanguageCode) Then
             Return ("Developer Error: Illegal parameter passed to TranslateForm (language: " &
-                   strLanguage & ", source: " & strDataSource & ").")
+                   strLanguageCode & ", source: " & strDataSource & ").")
         End If
 
         Dim dctComponents As Dictionary(Of String, Component) = New Dictionary(Of String, Component)
-        FillDctComponentsFromControl(clsForm, dctComponents)
-        Return TranslateDctComponents(dctComponents, clsForm.Name, strDataSource, strLanguage)
+        clsWinFormsComponents.FillDctComponentsFromControl(clsForm, dctComponents)
+        Return TranslateDctComponents(dctComponents, clsForm.Name, strDataSource, strLanguageCode)
 
     End Function
 
     '''--------------------------------------------------------------------------------------------
     ''' <summary>   
     '''    Translates all the (sub)menu items in <paramref name="clsMenuItems"/> into language
-    '''    <paramref name="strLanguage"/> using the translations in database
+    '''    <paramref name="strLanguageCode"/> using the translations in database
     '''    <paramref name="strDataSource"/>.
     ''' </summary>
     '''
@@ -106,29 +104,29 @@ Public NotInheritable Class clsTranslateWinForms
     ''' <param name="clsMenuItems">     The (sub)menu items to translate. </param>
     ''' <param name="strDataSource">    The path of the SQLite '.db' file that contains the
     '''                                 translation database. </param>
-    ''' <param name="strLanguage">      The language code to translate to (e.g. 'fr' for French).
+    ''' <param name="strLanguageCode">      The language code to translate to (e.g. 'fr' for French).
     '''                                 </param>
     '''
     ''' <returns>   If an exception is thrown, then returns the exception text; else returns 
     '''             'Nothing'. </returns>
     '''--------------------------------------------------------------------------------------------
     Public Shared Function TranslateMenuItems(strParentName As String, clsMenuItems As ToolStripItemCollection,
-                                              strDataSource As String, strLanguage As String) As String
+                                              strDataSource As String, strLanguageCode As String) As String
         If IsNothing(clsMenuItems) OrElse String.IsNullOrEmpty(strParentName) OrElse
-                String.IsNullOrEmpty(strDataSource) OrElse String.IsNullOrEmpty(strLanguage) Then
+                String.IsNullOrEmpty(strDataSource) OrElse String.IsNullOrEmpty(strLanguageCode) Then
             Return ("Developer Error: Illegal parameter passed to TranslateMenuItems (language: " &
-                   strLanguage & ", source: " & strDataSource & ", parent: " & strParentName & " ).")
+                   strLanguageCode & ", source: " & strDataSource & ", parent: " & strParentName & " ).")
         End If
 
         Dim dctComponents As Dictionary(Of String, Component) = New Dictionary(Of String, Component)
-        FillDctComponentsFromMenuItems(clsMenuItems, dctComponents)
+        clsWinFormsComponents.FillDctComponentsFromMenuItems(clsMenuItems, dctComponents)
 
-        Return TranslateDctComponents(dctComponents, strParentName, strDataSource, strLanguage)
+        Return TranslateDctComponents(dctComponents, strParentName, strDataSource, strLanguageCode)
     End Function
 
     '''--------------------------------------------------------------------------------------------
     ''' <summary>   
-    '''    Returns <paramref name="strText"/> translated into <paramref name="strLanguage"/>. 
+    '''    Returns <paramref name="strText"/> translated into <paramref name="strLanguageCode"/>. 
     '''    <para>
     '''    Translations can be bi-directional (e.g. from English to French or from French to English).
     '''    If <paramref name="strText"/> is already in the current language, or if no translation 
@@ -138,13 +136,13 @@ Public NotInheritable Class clsTranslateWinForms
     ''' <param name="strText">          The text to translate. </param>
     ''' <param name="strDataSource">    The path of the SQLite '.db' file that contains the
     '''                                 translation database. </param>
-    ''' <param name="strLanguage">      The language code to translate to (e.g. 'fr' for French).
+    ''' <param name="strLanguageCode">      The language code to translate to (e.g. 'fr' for French).
     '''                                 </param>
     '''
-    ''' <returns>   <paramref name="strText"/> translated into <paramref name="strLanguage"/>. </returns>
+    ''' <returns>   <paramref name="strText"/> translated into <paramref name="strLanguageCode"/>. </returns>
     '''--------------------------------------------------------------------------------------------
     Public Shared Function GetTranslation(strText As String, strDataSource As String,
-                                          strLanguage As String) As String
+                                          strLanguageCode As String) As String
         Dim strTranslation As String = ""
         Try
             'connect to the SQLite database that contains the translations
@@ -153,187 +151,24 @@ Public NotInheritable Class clsTranslateWinForms
                 .DataSource = strDataSource}
             Using clsConnection As New SQLiteConnection(clsBuilder.ConnectionString)
                 clsConnection.Open()
-                strTranslation = GetDynamicTranslation(strText, strLanguage, clsConnection)
+                strTranslation = GetDynamicTranslation(strText, strLanguageCode, clsConnection)
                 clsConnection.Close()
             End Using
         Catch e As Exception
             Return e.Message & Environment.NewLine &
                     "A problem occured attempting to translate string '" & strText &
-                    "' to language " & strLanguage & " using database " & strDataSource & "."
+                    "' to language " & strLanguageCode & " using database " & strDataSource & "."
         End Try
         Return strTranslation
     End Function
 
-    '''--------------------------------------------------------------------------------------------
-    ''' <summary>   
-    '''     Recursively traverses the <paramref name="clsControl"/> control hierarchy and returns a
-    '''     string containing the parent, name and associated text of each control. The string is 
-    '''     formatted as a comma-separated list suitable for importing into a database.
-    ''' </summary>
-    '''
-    ''' <param name="clsControl">   The control to process (it's children and sub-children shall 
-    '''                             also be processed recursively). </param>
-    '''
-    ''' <returns>   
-    '''     A string containing the parent, name and associated text of each control in the 
-    '''     hierarchy. The string is formatted as a comma-separated list suitable for importing 
-    '''     into a database. </returns>
-    '''--------------------------------------------------------------------------------------------
-    Public Shared Function GetControlsAsCsv(clsControl As Control) As String
-        If IsNothing(clsControl) Then
-            Return ""
-        End If
-
-        Dim dctComponents As Dictionary(Of String, Component) = New Dictionary(Of String, Component)
-        FillDctComponentsFromControl(clsControl, dctComponents)
-
-        Dim strControlsAsCsv As String = ""
-        For Each clsComponent In dctComponents
-            If TypeOf clsComponent.Value Is Control Then
-                Dim clsTmpControl As Control = DirectCast(clsComponent.Value, Control)
-                strControlsAsCsv &= clsControl.Name & "," & clsComponent.Key & "," & GetCsvText(clsTmpControl.Text) & vbCrLf
-            ElseIf TypeOf clsComponent.Value Is ToolStripItem Then
-                Dim clsMenuItem As ToolStripItem = DirectCast(clsComponent.Value, ToolStripItem)
-                strControlsAsCsv &= clsControl.Name & "," & clsComponent.Key & "," & GetCsvText(clsMenuItem.Text) & vbCrLf
-            Else
-                MsgBox("Developer Error: Translation dictionary entry (" & clsControl.Name & "," & clsComponent.Key & ") contained unexpected value type.")
-            End If
-        Next
-
-        Return strControlsAsCsv
-    End Function
-
-    '''--------------------------------------------------------------------------------------------
-    ''' <summary>   
-    '''     Recursively traverses the <paramref name="clsMenuItems"/> menu hierarchy and returns a 
-    '''     string containing the parent, name and associated text of each (sub)menu option in 
-    '''     <paramref name="clsMenuItems"/>. The string is formatted as a comma-separated list 
-    '''     suitable for importing into a database.
-    ''' </summary>
-    '''
-    ''' <param name="clsControl">        The WinForm control that is the parent of the menu. </param>
-    ''' <param name="clsMenuItems">     The WinForm menu items to add to the return string. </param>
-    '''
-    ''' <returns>   
-    '''     A string containing the parent and name of each (sub)menu option in
-    '''     <paramref name="clsMenuItems"/>. The string is formatted as a comma-separated list
-    '''     suitable for importing into a database. </returns>
-    '''--------------------------------------------------------------------------------------------
-    Public Shared Function GetMenuItemsAsCsv(clsControl As Control, clsMenuItems As ToolStripItemCollection) As String
-        If IsNothing(clsControl) OrElse IsNothing(clsMenuItems) Then
-            Return ""
-        End If
-
-        Dim dctComponents As Dictionary(Of String, Component) = New Dictionary(Of String, Component)
-        FillDctComponentsFromMenuItems(clsMenuItems, dctComponents)
-
-        Dim strMenuItemsAsCsv As String = ""
-        For Each clsComponent In dctComponents
-
-            If TypeOf clsComponent.Value Is ToolStripItem Then
-                Dim clsMenuItem As ToolStripItem = DirectCast(clsComponent.Value, ToolStripItem)
-                strMenuItemsAsCsv &= clsControl.Name & "," & clsComponent.Key & "," & GetCsvText(clsMenuItem.Text) & vbCrLf
-            Else
-                MsgBox("Developer Error: Translation dictionary entry (" & clsControl.Name & "," & clsComponent.Key & ") contained unexpected value type.")
-            End If
-
-        Next
-        Return strMenuItemsAsCsv
-    End Function
-
-    '''--------------------------------------------------------------------------------------------
-    ''' <summary>
-    '''    Populates dictionary <paramref name="dctComponents"/> with the control 
-    '''    <paramref name="clsControl"/> and its children.    
-    '''    The dictionary can then be used to conveniently translate the control text (see other
-    '''    functions and subs in this class).
-    ''' </summary>
-    '''
-    ''' <param name="clsControl">       The control used to populate the dictionary. </param>
-    ''' <param name="dctComponents">    [in,out] Dictionary to store the control and its children. 
-    '''                                 </param>
-    '''--------------------------------------------------------------------------------------------
-    Private Shared Sub FillDctComponentsFromControl(clsControl As Control,
-                                                   ByRef dctComponents As Dictionary(Of String, Component),
-                                                   Optional strParentName As String = "")
-        If IsNothing(clsControl) OrElse IsNothing(clsControl.Controls) OrElse IsNothing(dctComponents) Then
-            Exit Sub
-        End If
-
-        'if control is valid, then add it to the dictionary
-        Dim strControlName As String = ""
-        If Not String.IsNullOrEmpty(clsControl.Name) Then
-            strControlName = If(String.IsNullOrEmpty(strParentName), clsControl.Name, strParentName & "_" & clsControl.Name)
-            If Not dctComponents.ContainsKey(strControlName) Then  'ignore components that are already in the dictionary
-                dctComponents.Add(strControlName, clsControl)
-            End If
-        End If
-
-        For Each ctlChild As Control In clsControl.Controls
-
-            'Recursively process different types of menus and child controls
-            If TypeOf ctlChild Is MenuStrip Then
-                FillDctComponentsFromMenuItems(DirectCast(ctlChild, MenuStrip).Items, dctComponents)
-            ElseIf TypeOf ctlChild Is ToolStrip Then
-                FillDctComponentsFromMenuItems(DirectCast(ctlChild, ToolStrip).Items, dctComponents)
-            ElseIf TypeOf ctlChild Is Control Then
-                FillDctComponentsFromControl(ctlChild, dctComponents, strControlName)
-            End If
-
-        Next
-    End Sub
-
-    '''--------------------------------------------------------------------------------------------
-    ''' <summary>   
-    '''    Populates dictionary <paramref name="dctComponents"/> with all the menu items, and 
-    '''    sub-menu items in <paramref name="clsMenuItems"/>. 
-    '''    The dictionary can then be used to conveniently translate the menu item text (see other 
-    '''    functions and subs in this class).
-    ''' </summary>
-    '''
-    ''' <param name="clsMenuItems">     The list of menu items to populate the dictionary. </param>
-    ''' <param name="dctComponents">    [in,out] Dictionary to store the menu items. </param>
-    '''--------------------------------------------------------------------------------------------
-    Private Shared Sub FillDctComponentsFromMenuItems(clsMenuItems As ToolStripItemCollection, ByRef dctComponents As Dictionary(Of String, Component))
-        If IsNothing(clsMenuItems) OrElse IsNothing(dctComponents) Then
-            Exit Sub
-        End If
-
-        For Each clsMenuItem As ToolStripItem In clsMenuItems
-
-            'if menu item is valid, then add it to the dictionary
-            If Not String.IsNullOrEmpty(clsMenuItem.Name) AndAlso Not dctComponents.ContainsKey(clsMenuItem.Name) Then
-                'ignore components that are already in the dictionary
-                dctComponents.Add(clsMenuItem.Name, clsMenuItem)
-            End If
-
-            'Recursively process different types of sub-menu
-            If TypeOf clsMenuItem Is ToolStripMenuItem Then
-                Dim clsTmpMenuItem As ToolStripMenuItem = DirectCast(clsMenuItem, ToolStripMenuItem)
-                If clsTmpMenuItem.HasDropDownItems Then
-                    FillDctComponentsFromMenuItems(clsTmpMenuItem.DropDownItems, dctComponents)
-                End If
-            ElseIf TypeOf clsMenuItem Is ToolStripSplitButton Then
-                Dim clsTmpMenuItem As ToolStripSplitButton = DirectCast(clsMenuItem, ToolStripSplitButton)
-                If clsTmpMenuItem.HasDropDownItems Then
-                    FillDctComponentsFromMenuItems(clsTmpMenuItem.DropDownItems, dctComponents)
-                End If
-            ElseIf TypeOf clsMenuItem Is ToolStripDropDownButton Then
-                Dim clsTmpMenuItem As ToolStripDropDownButton = DirectCast(clsMenuItem, ToolStripDropDownButton)
-                If clsTmpMenuItem.HasDropDownItems Then
-                    FillDctComponentsFromMenuItems(clsTmpMenuItem.DropDownItems, dctComponents)
-                End If
-            End If
-
-        Next
-    End Sub
 
     '''--------------------------------------------------------------------------------------------
     ''' <summary>
     '''     Attempts to translate all the text in <paramref name="dctComponents"/>
-    '''     to <paramref name="strLanguage"/>.
+    '''     to <paramref name="strLanguageCode"/>.
     '''     Opens database <paramref name="strDataSource"/> and reads in all translations for the 
-    '''     <paramref name="strControlName"/> control for target language <paramref name="strLanguage"/>.
+    '''     <paramref name="strControlName"/> control for target language <paramref name="strLanguageCode"/>.
     '''     For each translation in the database, attempts to find the corresponding component in 
     '''     <paramref name="dctComponents"/>. If found, then it translates the text to the target 
     '''     language. If a component has a tool tip, then it also translates the tool tip.
@@ -343,7 +178,7 @@ Public NotInheritable Class clsTranslateWinForms
     ''' <param name="strControlName">   The name of the form or menu used to populate the dictionary. </param>
     ''' <param name="strDataSource">    The path of the SQLite '.db' file that contains the
     '''                                 translation database. </param>
-    ''' <param name="strLanguage">      The language code to translate to (e.g. 'fr' for French). </param>
+    ''' <param name="strLanguageCode">      The language code to translate to (e.g. 'fr' for French). </param>
     '''
     ''' <returns>
     '''     If an exception is thrown, then returns the exception text; else returns 'Nothing'.
@@ -352,7 +187,7 @@ Public NotInheritable Class clsTranslateWinForms
     Private Shared Function TranslateDctComponents(ByRef dctComponents As Dictionary(Of String, Component),
                                                    strControlName As String,
                                                    strDataSource As String,
-                                                   strLanguage As String) As String
+                                                   strLanguageCode As String) As String
         'Create a list of all the tool tip objects associated with this (sub)dialog
         'Note: Normally, a (sub)dialog wil only have a single tool tip object. This stores the 
         '      tool tips for all the components in the (sub)dialog.
@@ -389,7 +224,7 @@ Public NotInheritable Class clsTranslateWinForms
                     clsCommand.CommandText =
                             "SELECT control_name, form_controls.id_text, translation " &
                             "FROM form_controls, translations WHERE form_name = '" & strControlName &
-                            "' AND language_code = '" & strLanguage &
+                            "' AND language_code = '" & strLanguageCode &
                             "' AND form_controls.id_text = translations.id_text"
                     Dim clsReader As SQLiteDataReader = clsCommand.ExecuteReader()
                     Using clsReader
@@ -401,7 +236,7 @@ Public NotInheritable Class clsTranslateWinForms
                             Dim strComponentName As String = clsReader.GetString(0)
                             Dim strIdText As String = clsReader.GetString(1)
                             Dim strTranslation As String = clsReader.GetString(2)
-                            Dim clsComponent As Component = GetComponent(dctComponents, strComponentName)
+                            Dim clsComponent As Component = clsWinFormsComponents.GetComponent(dctComponents, strComponentName)
 
                             'if component not found then continue to next translation row
                             If clsComponent Is Nothing Then
@@ -419,7 +254,7 @@ Public NotInheritable Class clsTranslateWinForms
                                 MsgBox("Developer Error: Translation dictionary entry (" & strComponentName & ") contained unexpected value type.")
                                 Exit While
                             End If
-                            TranslateToolTip(lstToolTips, clsComponent, strLanguage, clsConnection)
+                            TranslateToolTip(lstToolTips, clsComponent, strLanguageCode, clsConnection)
                         End While
 
                     End Using
@@ -438,9 +273,9 @@ Public NotInheritable Class clsTranslateWinForms
                             If dctComponents.TryGetValue(strComponentName, clsComponent) Then
                                 If TypeOf clsComponent Is Control Then 'currently we only dynamically translate controls
                                     Dim clsControl As Control = DirectCast(clsComponent, Control)
-                                    clsControl.Text = GetDynamicTranslation(clsControl.Text, strLanguage, clsConnection)
+                                    clsControl.Text = GetDynamicTranslation(clsControl.Text, strLanguageCode, clsConnection)
                                 End If
-                                TranslateToolTip(lstToolTips, clsComponent, strLanguage, clsConnection)
+                                TranslateToolTip(lstToolTips, clsComponent, strLanguageCode, clsConnection)
                             End If
 
                         End While
@@ -450,7 +285,7 @@ Public NotInheritable Class clsTranslateWinForms
             End Using
         Catch e As Exception
             Return e.Message & Environment.NewLine &
-                    "A problem occured attempting to translate to language " & strLanguage &
+                    "A problem occured attempting to translate to language " & strLanguageCode &
                     " using database " & strDataSource & "."
         End Try
         Return Nothing
@@ -494,58 +329,6 @@ Public NotInheritable Class clsTranslateWinForms
         End If
 
     End Sub
-
-    '''--------------------------------------------------------------------------------------------
-    ''' <summary>   
-    '''    Returns the component associated with <paramref name="strComponentName"/> in 
-    '''    <paramref name="dctComponents"/>.
-    '''    If an exact match is not found, then returns a component whose name is a superset of 
-    '''    <paramref name="strComponentName"/>. 
-    '''    If no match is found then returns Nothing.
-    ''' </summary>
-    '''
-    ''' <param name="dctComponents">    The dictionary of translatable components. </param>
-    ''' <param name="strComponentName"> Name of the component to search for. </param>
-    '''
-    ''' <returns>   The component associated with <paramref name="strComponentName"/> in
-    '''    <paramref name="dctComponents"/>. If an exact match is not found, then returns a 
-    '''    component whose name is a superset of <paramref name="strComponentName"/>.
-    '''    If no match is found then returns Nothing. </returns>
-    '''--------------------------------------------------------------------------------------------
-    Private Shared Function GetComponent(dctComponents As Dictionary(Of String, Component), strComponentName As String) As Component
-        Dim clsComponent As Component = Nothing
-
-        If dctComponents.TryGetValue(strComponentName, clsComponent) OrElse
-                Not Regex.IsMatch(strComponentName, "\w+_\w+_\w+") Then
-            Return clsComponent
-        End If
-
-        'Edge Case: If the component name is not found in the dictionary, then look for a dictionary 
-        '  key that is a superset of the component name. This check is needed because the 
-        '  hierarchy of the WinForm controls may be slightly different at runtime, compared to 
-        '  when the translation database was generated.
-        '  For example, during testing we found cases for sub-dialog->tab->group->panel->radioButton 
-        '  similar to:
-        '    Database component name: sdgPlots_tbpPlotsOptions_tbpXAxis_ucrXAxis_grpAxisTitle_rdoSpecifyTitle
-        '    Runtime  component name: sdgPlots_tbpPlotsOptions_tbpXAxis_ucrXAxis_grpAxisTitle_ucrPnlAxisTitle_rdoSpecifyTitle
-
-        'split the full component name into 2 parts: parent names & child name
-        '  e.g 'sdgPlots_tbpPlotsOptions_tbpXAxis_ucrXAxis_grpAxisTitle' & '_rdoSpecifyTitle'
-        Dim iTmpIndex As Integer = strComponentName.LastIndexOf("_")
-        Dim strParentNames As String = strComponentName.Substring(0, iTmpIndex)
-        Dim strControlName As String = strComponentName.Substring(iTmpIndex)
-
-        'if the dictionary contains a single key that matches <parents>_<other controls>_<child>,
-        '  then return the component associated with that key
-        Dim lstComponents As List(Of Component) =
-            dctComponents.Where(Function(x) Regex.IsMatch(x.Key, strParentNames & "\w+_\w+" & strControlName)) _
-            .Select(Function(x) x.Value).ToList()
-        If lstComponents.Count = 1 Then
-            clsComponent = lstComponents(0)
-        End If
-
-        Return clsComponent
-    End Function
 
     '''--------------------------------------------------------------------------------------------
     ''' <summary>   
@@ -594,32 +377,62 @@ Public NotInheritable Class clsTranslateWinForms
     End Function
 
     '''--------------------------------------------------------------------------------------------
-    ''' <summary>   
-    '''    Decides whether <paramref name="strText"/> is likely to be changed during execution of 
-    '''    the software. If no, then returns <paramref name="strText"/>. If yes, then returns 
-    '''    'ReplaceWithDynamicTranslation'. It makes the decision based upon a set of heuristics.
-    '''    <para>
-    '''    This function is normally only used when creating a comma-separated list suitable for 
-    '''    importing into a database. During program execution, the 'ReplaceWithDynamicTranslation'
-    '''    text tells the library to dynamically try and translate the current text, rather than
-    '''    looking up the static text associated with the control.</para></summary>
-    '''
-    ''' <param name="strText">  The text to assess. </param>
-    '''
-    ''' <returns>   Decides whether <paramref name="strText"/> is likely to be changed during 
-    '''             execution of the software. If no, then returns <paramref name="strText"/>. 
-    '''             If yes, then returns'ReplaceWithDynamicTranslation'. </returns>
+    ''' <summary>
+    ''' Returns translations from database <paramref name="strDataSource"/>, for language 
+    ''' <paramref name="strLanguageCode"/> and ID of text to translate <paramref name="strIdText"/>.
+    ''' If <paramref name="strLanguageCode"/> is not specified then returns translations for all 
+    ''' languages.
+    ''' If <paramref name="strIdText"/> is not specified, then returns all translations for the 
+    ''' specified language(s).
+    ''' The returned data table has 3 columns: <code>id_text, language_code, translation</code>
+    ''' </summary>
+    ''' <param name="strDataSource">The database file path </param>
+    ''' <param name="strLanguageCode">Optional. Only returns translations for this language. If not 
+    '''                               specified then returns translations for all languages</param>
+    ''' <param name="strIdText">Optional. The ID of the text to translate. If not specified, then 
+    '''                         returns all translations for the specified language(s).</param>
+    ''' <returns>Translations from database <paramref name="strDataSource"/>, for language 
+    '''      <paramref name="strLanguageCode"/> and text to translate <paramref name="strIdText"/>.
+    '''      </returns>
     '''--------------------------------------------------------------------------------------------
-    Private Shared Function GetCsvText(strText As String) As String
-        If String.IsNullOrEmpty(strText) OrElse
-                strText.Contains(vbCr) OrElse strText.Contains(vbLf) OrElse 'multiline text
-                Regex.IsMatch(strText, "CheckBox\d+$") OrElse 'CheckBox1, CheckBox2 etc. normally indicates dynamic translation
-                Regex.IsMatch(strText, "Label\d+$") OrElse 'Label1, Label2 etc. normally indicates dynamic translation
-                Regex.IsMatch(strText, "ToolStrip\d+$") OrElse 'ToolStripSplitButton1, ToolStripSplitButton2 etc. normally indicates dynamic translation
-                Not Regex.IsMatch(strText, "[a-zA-Z]") Then 'text that doesn't contain any letters (e.g. number strings)
-            Return "ReplaceWithDynamicTranslation"
-        End If
-        Return strText
+    Public Shared Function GetTranslations(strDataSource As String, Optional strLanguageCode As String = "", Optional strIdText As String = "") As DataTable
+        Dim clsDataTableTranslations As New DataTable
+        Try
+            'connect to the SQLite database that contains the translations
+            Dim clsBuilder As New SQLiteConnectionStringBuilder With {
+                .FailIfMissing = True,
+                .DataSource = strDataSource}
+            Using clsConnection As New SQLiteConnection(clsBuilder.ConnectionString)
+                clsConnection.Open()
+
+                Dim clsDataAdapter As New SQLiteDataAdapter
+                Dim strSqlWhereClause As String = ""
+                Using cmdSelect As New SQLiteCommand(clsConnection)
+
+                    If Not String.IsNullOrEmpty(strLanguageCode) Then
+                        strSqlWhereClause = " WHERE language_code = @language_code"
+                        cmdSelect.Parameters.Add(New SQLiteParameter("language_code", strLanguageCode))
+                    End If
+
+                    If Not String.IsNullOrEmpty(strIdText) Then
+                        strSqlWhereClause = If(strSqlWhereClause = "", " WHERE ", " AND ")
+                        strSqlWhereClause &= "id_text = @id_text"
+                        cmdSelect.Parameters.Add(New SQLiteParameter("id_text", strIdText))
+                    End If
+
+                    cmdSelect.CommandText =
+                        "SELECT id_text, language_code, translation FROM translations " & strSqlWhereClause
+                    clsDataAdapter.SelectCommand = cmdSelect
+                    clsDataAdapter.Fill(clsDataTableTranslations)
+
+                End Using
+
+                clsConnection.Close()
+            End Using
+        Catch e As Exception
+            Throw New Exception("Error. Could NOT get translations.", e)
+        End Try
+        Return clsDataTableTranslations
     End Function
 
 
